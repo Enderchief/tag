@@ -1,0 +1,43 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '$lib/db.ts';
+import Name from '../components/Name';
+
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+const refreshToken = cookies.get('sb-refresh-token');
+
+if (!accessToken || !refreshToken) {
+	return redirect('/');
+}
+
+const {
+	data: { session },
+	error: e,
+} = await supabase.auth.getSession();
+console.log(!!session, e);
+
+if (!session) {
+	return redirect('/api/auth/signout');
+}
+
+const { data, error } = await supabase
+	.from('user')
+	.select('name,id')
+	.eq('id', session!.user.id);
+
+if (error) {
+	redirect('/api/auth/signout');
+}
+---
+
+<Layout title='Tag | Dashboard'>
+	<header class='p-4 text-center flex gap-4 justify-end'>
+        <Name client:idle user={data![0]!}/>
+		<a
+			class='text-gray-700 hover:underline hover:text-gray-600'
+			href='/api/auth/signout'>Sign Out</a
+		>
+	</header>
+</Layout>

@@ -21,3 +21,11 @@ export async function isAdmin(): Promise<boolean> {
 	}
 	return true;
 }
+
+export function formatTime(s: number) {
+	const minutes = Math.floor(s / 60);
+	const seconds = s - minutes * 60;
+	return `${minutes.toString().padStart(2, '0')}:${seconds
+		.toString()
+		.padStart(2, '0')}`;
+}

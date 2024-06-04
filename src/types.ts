@@ -9,29 +9,70 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      challenges: {
+        Row: {
+          description: string
+          id: number
+          is_curse: boolean
+          max_coins: number
+          min_coins: number
+          name: string
+        }
+        Insert: {
+          description: string
+          id?: number
+          is_curse: boolean
+          max_coins: number
+          min_coins: number
+          name: string
+        }
+        Update: {
+          description?: string
+          id?: number
+          is_curse?: boolean
+          max_coins?: number
+          min_coins?: number
+          name?: string
+        }
+        Relationships: []
+      }
       team: {
         Row: {
           challenges_completed: number[]
           coins: number | null
+          current_challenge: number | null
           id: number
           name: string
           role: Database["public"]["Enums"]["role"] | null
+          veto_until: string | null
         }
         Insert: {
           challenges_completed: number[]
           coins?: number | null
+          current_challenge?: number | null
           id?: number
           name: string
           role?: Database["public"]["Enums"]["role"] | null
+          veto_until?: string | null
         }
         Update: {
           challenges_completed?: number[]
           coins?: number | null
+          current_challenge?: number | null
           id?: number
           name?: string
           role?: Database["public"]["Enums"]["role"] | null
+          veto_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "team_current_challenge_fkey"
+            columns: ["current_challenge"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user: {
         Row: {
@@ -77,7 +118,48 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_claim: {
+        Args: {
+          uid: string
+          claim: string
+        }
+        Returns: string
+      }
+      get_claim: {
+        Args: {
+          uid: string
+          claim: string
+        }
+        Returns: Json
+      }
+      get_claims: {
+        Args: {
+          uid: string
+        }
+        Returns: Json
+      }
+      get_my_claim: {
+        Args: {
+          claim: string
+        }
+        Returns: Json
+      }
+      get_my_claims: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      is_claims_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      set_claim: {
+        Args: {
+          uid: string
+          claim: string
+          value: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       role: "runner" | "chaser"

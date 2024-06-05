@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useReducer } from 'react';
 import type { Database } from '../types';
 import { supabase } from '$lib/db';
 import { formatTime } from '$lib/utils';
@@ -7,38 +7,190 @@ import Timer from './Timer';
 type Team = Database['public']['Tables']['team']['Row'];
 type Challenge = Database['public']['Tables']['challenges']['Row'];
 
+type Action =
+	| {
+			type: 'new';
+			challenge: Challenge;
+	  }
+	| {
+			type: 'veto';
+			until?: Date;
+	  }
+	| {
+			type: 'done';
+			coins?: number;
+	  };
+
+interface Model {
+	team: Team;
+	challenge?: Challenge | undefined;
+	veto?: Date | undefined;
+}
+
+function stateReducer(model: Model, action: Action): Model {
+	console.log('reducer: ', { model, action });
+
+	switch (action.type) {
+		case 'done':
+			return {
+				team: { ...model.team, coins: model.team.coins! + (action.coins || 0) },
+			};
+		case 'new':
+			return {
+				team: { ...model.team },
+				challenge: action.challenge,
+				veto: model.team.veto_until
+					? new Date(model.team.veto_until)
+					: undefined,
+			};
+		case 'veto':
+			const team = { ...model.team };
+			if (action.until) {
+				team.veto_until = action.until.toISOString();
+			} else {
+				team.veto_until = null;
+			}
+			return {
+				team: team,
+				veto: action.until,
+			};
+		default:
+			return model;
+	}
+}
+
 export default function RunnerDashboard({ team }: { team: Team }) {
-	const [vetoTime, setVetoSince] = useState<Date | undefined>(
-		team.veto_until ? new Date(team.veto_until) : undefined
-	);
+	const [state, dispatch] = useReducer(stateReducer, { team });
+
+	function handleDoneChallenge(winnable: number) {
+		console.log('handleDoneChallenge');
+
+		(async function () {
+			console.log('handleDoneChallenge inner');
+
+			state.team.challenges_completed.push(state.challenge!.id);
+			const { error } = await supabase
+				.from('team')
+				.update({
+					coins: (state.team.coins || 0) + winnable,
+					current_challenge: null,
+					challenges_completed: state.team.challenges_completed,
+				})
+				.eq('id', state.team.id);
+			console.log({ error, winnable });
+			dispatch({ type: 'done' });
+		})();
+	}
+
+	function handleVetoChallenge() {
+		console.log('handleVetoChallenge');
+
+		(async () => {
+			let date: Date;
+
+			const { data, error } = await supabase
+				.from('team')
+				.select('veto_until')
+				.eq('id', state.team.id);
+			console.log('handleVeto', data, error);
+
+			if (!error && data && data.length && data[0]?.veto_until) {
+				date = new Date(data[0].veto_until);
+			} else {
+				date = new Date(Date.now() + 10 * 60000);
+
+				supabase
+					.from('team')
+					.update({
+						veto_until: date.toISOString(),
+						challenges_completed: state.team.challenges_completed,
+						current_challenge: null,
+					})
+					.eq('id', state.team.id)
+					.then(() => {});
+			}
+
+			dispatch({
+				type: 'veto',
+				until: date,
+			});
+		})();
+	}
+
+	function handleNewChallenge() {
+		console.log('handleNewChallenge');
+		if (state.challenge) return;
+
+		supabase
+			.from('challenges')
+			.select('*')
+			.not('id', 'in', `(${state.team.challenges_completed.join(',')})`)
+			.then(({ data, error }) => {
+				if (error || !data.length) return;
+				if (state.team.current_challenge) {
+					return dispatch({
+						type: 'new',
+						challenge: data.find((c) => c.id === state.team.current_challenge)!,
+					});
+				}
+
+				let challenge = data[Math.floor(Math.random() * data.length)]!;
+				dispatch({
+					type: 'new',
+					challenge,
+				});
+
+				supabase
+					.from('team')
+					.update({ current_challenge: challenge!.id })
+					.eq('id', state.team.id)
+					.then(() => {});
+			});
+	}
+
+	function handleEndVeto() {
+		console.log('handleEndVeto');
+		supabase.from('team').update({ veto_until: null });
+		dispatch({ type: 'veto' });
+	}
 
 	useEffect(() => {
-		if (!vetoTime || vetoTime.valueOf() > Date.now()) return;
-		console.log('yes', vetoTime);
+		if (!state.veto || state.veto.valueOf() > Date.now()) return;
+		console.log('yes', state.veto);
 
 		supabase
 			.from('team')
 			.update({ veto_until: null })
-			.eq('id', team.id)
+			.eq('id', state.team.id)
 			.then(({ error }) => {
 				console.log('error', error);
 			});
-	}, [vetoTime]);
+	}, [state.veto]);
+
+	useEffect(() => {
+		if (state.veto) return;
+		supabase
+			.from('team')
+			.select('veto_until')
+			.eq('id', state.team.id)
+			.then(({ error, data }) => {
+				if (error || !data[0]?.veto_until) return;
+				dispatch({ type: 'veto', until: new Date(data[0].veto_until!) });
+				return;
+			});
+	}, [state.veto]);
 
 	return (
 		<section className='max-w-[40rem] m-auto mt-16 flex flex-col'>
 			{team.role === 'runner' && (
 				<>
-					<CoinInfo
-						team={team}
-						vetoTime={vetoTime}
-						setVetoTime={setVetoSince}
-					/>
+					<CoinInfo state={state} onEndVeto={handleEndVeto} />
 					<div className='mt-10'>
 						<ChallengeInfo
-							team={team}
-							vetoSince={vetoTime}
-							setVetoSince={setVetoSince}
+							state={state}
+							onNewChallenge={handleNewChallenge}
+							onDoneChallenge={handleDoneChallenge}
+							onVetoChallenge={handleVetoChallenge}
 						/>
 					</div>
 				</>
@@ -48,35 +200,17 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 }
 
 function CoinInfo({
-	team,
-	vetoTime,
-	setVetoTime,
+	state,
+	onEndVeto,
 }: {
-	team: Team;
-	vetoTime: Date | undefined;
-	setVetoTime: React.Dispatch<React.SetStateAction<Date | undefined>>;
+	state: Model;
+	onEndVeto: VoidFunction;
 }) {
-	const [coins, setCoins] = useState(team.coins || 0);
+	const [coins, setCoins] = useState(state.team.coins || 0);
 	const [started, setStarted] = useState(false);
 	const [seconds, setSeconds] = useState(60);
 	const [startTime, setStartTime] = useState<number>(0);
 	const [id, setId] = useState<number>();
-
-	useEffect(() => {
-		if (vetoTime) return;
-		supabase
-			.from('team')
-			.select('veto_until')
-			.eq('id', team.id)
-			.limit(1)
-			.then(({ data, error }) => {
-				if (error || !data[0]?.veto_until) return;
-
-				const date = new Date(data[0].veto_until);
-				console.log({ date, data: data[0].veto_until });
-				setVetoTime(date);
-			});
-	}, [vetoTime]);
 
 	function startCount() {
 		if (coins <= 0) return;
@@ -105,7 +239,7 @@ function CoinInfo({
 		setCoins(updated);
 
 		const formData = new FormData();
-		formData.append('id', team.id.toString());
+		formData.append('id', state.team.id.toString());
 		formData.append('coins', updated.toString());
 		fetch('/api/team/update', { method: 'post', body: formData });
 	}
@@ -115,22 +249,12 @@ function CoinInfo({
 		else startCount();
 	}
 
-	if (vetoTime) {
+	if (state.veto) {
 		return (
 			<div>
-				<p>Veto'd, no transit until {vetoTime.toLocaleTimeString()}</p>
+				<p>Veto'd, no transit until {state.veto.toLocaleTimeString()}</p>
 				<p>
-					<Timer
-						time={vetoTime}
-						then={() => {
-							supabase
-								.from('team')
-								.update({ veto_until: null })
-								.eq('id', team.id);
-							setVetoTime(undefined);
-						}}
-					/>{' '}
-					remain
+					<Timer time={state.veto} then={onEndVeto} /> remain
 				</p>
 			</div>
 		);
@@ -157,118 +281,62 @@ function CoinInfo({
 }
 
 function ChallengeInfo({
-	team,
-	vetoSince,
-	setVetoSince,
+	state,
+	onNewChallenge,
+	onDoneChallenge,
+	onVetoChallenge,
 }: {
-	team: Team;
-	vetoSince: Date | undefined;
-	setVetoSince: (v: Date | undefined) => void;
+	state: Model;
+	onNewChallenge: VoidFunction;
+	onDoneChallenge: (winnable: number) => void;
+	onVetoChallenge: VoidFunction;
 }) {
 	const [hasChallenge, setHasChallenge] = useState(false);
 
-	const [challenge, setChallenge] = useState<Challenge>();
 	const [winnable, setWinnable] = useState<number>(0);
 
 	useEffect(() => {
-		setWinnable(challenge?.min_coins || 0);
-	}, [challenge]);
+		setWinnable(state.challenge?.min_coins || 0);
+	}, [state.challenge]);
 
 	useEffect(() => {
-		if (!team.current_challenge || challenge) return;
-		newChallenge();
-	}, [challenge]);
+		if (state.challenge) setHasChallenge(true);
+		if (!state.team.current_challenge || state.challenge) return;
+		onNewChallenge();
+	}, [state.challenge]);
 
-	function newChallenge() {
-		setHasChallenge(true);
-
-		(async function () {
-			const { error, data } = await supabase
-				.from('challenges')
-				.select('*')
-				.not('id', 'in', `(${team.challenges_completed.join(',')})`);
-			// console.log({ error, data, count });
-			if (!data || !data?.length || error) return;
-			if (team.current_challenge) {
-				setChallenge(data.find((c) => c.id === team.current_challenge));
-				return;
-			}
-			let c = data[Math.floor(Math.random() * data.length)]!;
-			// console.log(c);
-			// team.challenges_completed.push(c.id);
-
-			await supabase
-				.from('team')
-				.update({
-					// challenges_completed: team.challenges_completed,
-					current_challenge: c.id,
-				})
-				.eq('id', team.id);
-			setChallenge(c);
-		})();
-	}
 	function doneChallenge() {
 		setHasChallenge(false);
-
-		(async function () {
-			team.challenges_completed.push(challenge!.id);
-			const { error } = await supabase
-				.from('team')
-				.update({
-					coins: (team.coins || 0) + winnable,
-					current_challenge: null,
-					challenges_completed: team.challenges_completed,
-				})
-				.eq('id', team.id);
-			console.log({ error, winnable });
-		})();
-	}
-
-	function vetoChallenge() {
-		const date = new Date(Date.now() + 10 * 60000);
-		console.log('vetoChallenge', date);
-
-		setVetoSince(date);
-		team.challenges_completed = team.challenges_completed.filter(
-			(c) => c !== team.current_challenge
-		);
-		supabase
-			.from('team')
-			.update({
-				veto_until: date.toISOString(),
-				challenges_completed: team.challenges_completed,
-				current_challenge: null,
-			})
-			.eq('id', team.id);
+		onDoneChallenge(winnable);
 	}
 
 	useEffect(() => {
-		// console.log('vetoEffect', vetoSince, team.veto_until);
+		console.log('vetoEffect', state.veto, state.team.veto_until);
 
-		if (vetoSince && !team.veto_until) {
+		if (state.veto && !state.team.veto_until) {
 			console.log('update');
 
 			supabase
 				.from('team')
-				.update({ veto_until: vetoSince!.toISOString() })
-				.eq('id', team.id)
+				.update({ veto_until: state.veto!.toISOString() })
+				.eq('id', state.team.id)
 				.then(({ error }) => {
 					console.log('vetoEffect error', error);
 				});
 		}
-	}, [vetoSince]);
+	}, [state.veto]);
 
-	if (vetoSince) {
+	if (state.veto) {
 		return <p>No Challenges yet...</p>;
 	}
 
-	if (hasChallenge && challenge)
+	if (hasChallenge && state.challenge)
 		return (
 			<div className='flex flex-col'>
-				<h3 className='text-lg'>{challenge.name}</h3>
+				<h3 className='text-lg'>{state.challenge.name}</h3>
 				<p
 					dangerouslySetInnerHTML={{
-						__html: challenge.description.replaceAll(
+						__html: state.challenge.description.replaceAll(
 							/\[(.*)\]\((.*)\)/g,
 							(_, ...args) => {
 								// console.log({ substring, args });
@@ -289,7 +357,7 @@ function ChallengeInfo({
 					</button>
 					<button
 						className='border border-transparent rounded-lg py-2 px-4 bg-red-100 hover:bg-red-200 active:bg-red-300'
-						onClick={vetoChallenge}
+						onClick={onVetoChallenge}
 					>
 						Veto
 					</button>
@@ -304,11 +372,22 @@ function ChallengeInfo({
 					<span className='inline-block mr-4'>Win </span>
 					<input
 						type='number'
-						min={challenge.min_coins}
-						max={challenge.max_coins}
-						defaultValue={challenge.min_coins}
-						disabled={challenge.min_coins === challenge.max_coins}
+						min={state.challenge.min_coins}
+						max={state.challenge.max_coins}
+						defaultValue={state.challenge.min_coins}
+						disabled={state.challenge.min_coins === state.challenge.max_coins}
 						onChange={(e) => {
+							const num = e.target.valueAsNumber;
+							console.log('change', num);
+							if (num > state.challenge!.max_coins) {
+								e.target.value = `${state.challenge!.max_coins}`;
+							} else if (
+								num < state.challenge!.min_coins ||
+								Number.isNaN(num)
+							) {
+								e.target.value = `${state.challenge!.min_coins}`;
+								return;
+							}
 							setWinnable(e.target.valueAsNumber);
 						}}
 						className='border mt-10'
@@ -322,7 +401,7 @@ function ChallengeInfo({
 	return (
 		<button
 			className='p-2 border border-transparent rounded-lg bg-blue-200'
-			onClick={newChallenge}
+			onClick={onNewChallenge}
 		>
 			New Challenge
 		</button>

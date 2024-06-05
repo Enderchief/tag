@@ -34,7 +34,7 @@ export default function Name({
 					name='name'
 					value={name}
 					onChange={(e) => setName(e.target.value)}
-					className='border'
+					className='border text-sm max-w-[15ch] sm:text-base sm:max-w-fit'
 					title='Change your name'
 				/>
 				<button

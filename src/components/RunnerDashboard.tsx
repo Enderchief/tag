@@ -185,7 +185,7 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 			{team.role === 'runner' && (
 				<>
 					<CoinInfo state={state} onEndVeto={handleEndVeto} />
-					<div className='mt-10'>
+					<div className='mt-10 flex justify-center'>
 						<ChallengeInfo
 							state={state}
 							onNewChallenge={handleNewChallenge}
@@ -261,7 +261,7 @@ function CoinInfo({
 	}
 
 	return (
-		<div className='grid grid-cols-2'>
+		<div className='grid grid-cols-2 text-sm sm:text-base'>
 			<p className=''>
 				Coin count: {started ? formatTime(seconds) : coins} minutes
 			</p>
@@ -272,7 +272,7 @@ function CoinInfo({
 					started
 						? 'bg-red-100 hover:bg-red-200 active:bg-red-100'
 						: 'bg-green-100 hover:bg-green-200 active:bg-green-100'
-				} transition-all`}
+				} transition-all p-2`}
 			>
 				{started ? 'Stop' : 'Start'} Transit Count
 			</button>
@@ -332,9 +332,10 @@ function ChallengeInfo({
 
 	if (hasChallenge && state.challenge)
 		return (
-			<div className='flex flex-col'>
-				<h3 className='text-lg'>{state.challenge.name}</h3>
+			<div className='flex flex-col text-sm sm:text-base'>
+				<h3 className='text-base sm:text-lg'>{state.challenge.name}</h3>
 				<p
+					className='text-sm max-w-[45ch] sm:max-w-96'
 					dangerouslySetInnerHTML={{
 						__html: state.challenge.description.replaceAll(
 							/\[(.*)\]\((.*)\)/g,
@@ -348,7 +349,7 @@ function ChallengeInfo({
 						),
 					}}
 				></p>
-				<div className='flex justify-center gap-20 mt-4'>
+				<div className='flex justify-center gap-5 mt-4 sm:gap-10 md:gap-20'>
 					<button
 						className='border border-transparent rounded-lg py-2 px-4 bg-green-100 hover:bg-green-200 active:bg-green-300'
 						onClick={doneChallenge}
@@ -400,7 +401,7 @@ function ChallengeInfo({
 
 	return (
 		<button
-			className='p-2 border border-transparent rounded-lg bg-blue-200'
+			className='p-2 border border-transparent rounded-lg bg-blue-200 self-center'
 			onClick={onNewChallenge}
 		>
 			New Challenge

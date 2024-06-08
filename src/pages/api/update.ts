@@ -6,12 +6,13 @@ export const POST: APIRoute = async ({ redirect, request }) => {
 	const formData = await request.formData();
 	const id = formData.get('id');
 	const name = formData.get('name');
+	const team = formData.get('team')?.toString();
 
 	const referer = request.headers.get('referer')
 		? new URL(request.headers.get('referer')!).pathname
 		: '/dashboard';
 
-	if (!id || !name) {
+	if (!id || !name || !team) {
 		return redirect(referer);
 	}
 
@@ -21,7 +22,7 @@ export const POST: APIRoute = async ({ redirect, request }) => {
 
 	await supabase
 		.from('user')
-		.update({ name: name.toString() })
+		.update({ name: name.toString(), team: team === '0' ? null : +team })
 		.eq('id', id.toString());
 
 	return redirect(referer);

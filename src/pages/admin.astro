@@ -43,7 +43,7 @@ if (teamError) {
 		<div class='mb-8'>
 			<h3>Players</h3>
 		</div>
-		{userData.map((user) => <AdminUserInfo client:idle user={user} />)}
+		{userData.map((user) => <AdminUserInfo client:idle {user} teams={teamData} />)}
 	</section>
 
 	<AdminSection client:load title='Teams' {userData} {teamData} client:idle />

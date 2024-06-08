@@ -3,15 +3,18 @@ import type { Database } from '../types';
 
 export default function AdminUserInfo({
 	user,
+	teams,
 }: {
 	user: Database['public']['Tables']['user']['Row'];
+	teams: Array<Database['public']['Tables']['team']['Row']>;
 }) {
 	const [name, setName] = useState(user.name!);
+	const [team, setTeam] = useState(user.team);
 
 	return (
 		<Parent
 			className='border rounded-md p-4 grid grid-cols-[2fr_5fr] gap-1.5'
-			change={name !== user.name}
+			change={name !== user.name || team !== user.team}
 		>
 			<label htmlFor='id'>id</label>
 			<input name='id' type='hidden' id='id' value={user.id} />
@@ -29,20 +32,23 @@ export default function AdminUserInfo({
 			<label htmlFor='created'>created at</label>
 			<p>{new Date(user.created_at).toDateString()}</p>
 
-			<label htmlFor='team'>team id</label>
-			<p>{user.team}</p>
+			<label htmlFor='team'>team</label>
+			<select
+				name='team'
+				className={!team ? `font-bold` : ''}
+				onChange={(e) => setTeam(+e.target.value)}
+				value={team || 0}
+			>
+				{teams.map((t) => (
+					<option value={t.id} key={t.id}>
+						{t.name}
+					</option>
+				))}
+				<option value='0'>None</option>
+			</select>
 
 			<label htmlFor='admin'>admin</label>
 			<p>{user.admin.toString()}</p>
-
-			{name !== user.name && (
-				<button
-					type='submit'
-					className='border rounded-md w-36 mx-auto mt-2 p-2 bg-green-100 hover:bg-green-200 transition-all text-gray-900 col-[1/-1]'
-				>
-					Submit Change
-				</button>
-			)}
 		</Parent>
 	);
 }
@@ -60,6 +66,12 @@ function Parent({
 		return (
 			<form action='/api/update' method='POST' className={className}>
 				{children}
+				<button
+					type='submit'
+					className='border rounded-md w-36 mx-auto mt-2 p-2 bg-green-100 hover:bg-green-200 transition-all text-gray-900 col-[1/-1]'
+				>
+					Submit Change
+				</button>
 			</form>
 		);
 	} else {

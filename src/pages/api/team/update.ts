@@ -8,6 +8,7 @@ export const POST: APIRoute = async ({ redirect, request }) => {
 	const name = formData.get('name');
 	const coins = formData.get('coins');
 	const role = formData.get('role')?.toString();
+	const veto = formData.get('veto_until')?.toString();
 
 	console.log('req: ', Object.fromEntries(formData.entries()));
 
@@ -31,6 +32,10 @@ export const POST: APIRoute = async ({ redirect, request }) => {
 
 	if (updated['role'] === 'none') {
 		updated['role'] = null;
+	}
+
+	if (!veto) {
+		updated.veto_until = null;
 	}
 
 	const { error } = await supabase

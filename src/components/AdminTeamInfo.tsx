@@ -9,15 +9,17 @@ export default function AdminTeamInfo({
 	const [name, setName] = useState(team.name!);
 	const [role, setRole] = useState(team.role || 'none');
 	const [coins, setCoins] = useState(team.coins! || 0);
+	const [veto, setVeto] = useState(team.veto_until);
 
 	const predicate =
 		name !== team.name ||
 		(team.role === null ? role !== 'none' : team.role !== role) ||
-		coins !== team.coins;
+		coins !== team.coins ||
+		veto !== team.veto_until;
 
 	return (
 		<Parent
-			className='border rounded-md p-4 grid grid-cols-[2fr_5fr] gap-1.5'
+			className='border rounded-md p-4 grid grid-cols-[2fr_4fr] gap-1.5'
 			change={predicate}
 		>
 			<label htmlFor='id'>id</label>
@@ -51,6 +53,21 @@ export default function AdminTeamInfo({
 				defaultValue={coins || 0}
 				onChange={(e) => setCoins(e.target.valueAsNumber)}
 			/>
+
+			{team.veto_until && (
+				<>
+					<label htmlFor='veto'>currently veto'd</label>
+					<input
+						name='veto'
+						type='checkbox'
+						checked={!!veto}
+						onChange={(e) => {
+							if (e.target.checked) setVeto(team.veto_until);
+							else setVeto(null);
+						}}
+					/>
+				</>
+			)}
 
 			<label htmlFor='challenges_completed'>challenges_completed</label>
 			<p>{team.challenges_completed.join(', ')}</p>

@@ -19,6 +19,9 @@ type Action =
 	| {
 			type: 'done';
 			coins?: number;
+	  }
+	| {
+			type: 'pass';
 	  };
 
 interface Model {
@@ -29,6 +32,7 @@ interface Model {
 
 function stateReducer(model: Model, action: Action): Model {
 	console.log('reducer: ', { model, action });
+	const team = { ...model.team };
 
 	switch (action.type) {
 		case 'done':
@@ -44,15 +48,19 @@ function stateReducer(model: Model, action: Action): Model {
 					: undefined,
 			};
 		case 'veto':
-			const team = { ...model.team };
 			if (action.until) {
 				team.veto_until = action.until.toISOString();
 			} else {
 				team.veto_until = null;
 			}
 			return {
-				team: team,
+				team,
 				veto: action.until,
+			};
+		case 'pass':
+			return {
+				team: { ...model.team, current_challenge: null, veto_until: null },
+				veto: undefined,
 			};
 		default:
 			return model;
@@ -80,6 +88,17 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 			console.log({ error, winnable });
 			dispatch({ type: 'done' });
 		})();
+	}
+
+	function handlePassChallenge() {
+		console.log('handlePassChallenge');
+		dispatch({ type: 'pass' });
+
+		supabase
+			.from('team')
+			.update({ current_challenge: null, veto_until: null })
+			.eq('id', state.team.id)
+			.then(() => {});
 	}
 
 	function handleVetoChallenge() {
@@ -191,6 +210,7 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 							onNewChallenge={handleNewChallenge}
 							onDoneChallenge={handleDoneChallenge}
 							onVetoChallenge={handleVetoChallenge}
+							onPassChallenge={handlePassChallenge}
 						/>
 					</div>
 				</>
@@ -285,11 +305,13 @@ function ChallengeInfo({
 	onNewChallenge,
 	onDoneChallenge,
 	onVetoChallenge,
+	onPassChallenge,
 }: {
 	state: Model;
 	onNewChallenge: VoidFunction;
 	onDoneChallenge: (winnable: number) => void;
 	onVetoChallenge: VoidFunction;
+	onPassChallenge: VoidFunction;
 }) {
 	const [hasChallenge, setHasChallenge] = useState(false);
 
@@ -308,6 +330,11 @@ function ChallengeInfo({
 	function doneChallenge() {
 		setHasChallenge(false);
 		onDoneChallenge(winnable);
+	}
+
+	function passChallenge() {
+		setHasChallenge(false);
+		onPassChallenge();
 	}
 
 	useEffect(() => {
@@ -364,7 +391,7 @@ function ChallengeInfo({
 					</button>
 					<button
 						className='border border-transparent rounded-lg py-2 px-4 bg-yellow-100 hover:bg-yellow-200 active:bg-yellow-300'
-						onClick={() => {}}
+						onClick={passChallenge}
 					>
 						Pass
 					</button>

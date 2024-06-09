@@ -16,7 +16,7 @@ export default function Timer({
 		setId(
 			setInterval(() => {
 				setMilli(time.valueOf() - Date.now());
-			}, 500) as any as number
+			}, 50) as any as number
 		);
 	});
 
@@ -28,5 +28,5 @@ export default function Timer({
 		then?.call(null);
 	}, [ms]);
 
-	return <>{formatTime(Math.floor(ms / 1000))}</>;
+	return <>{formatTime((ms / 1000), 4)}</>;
 }

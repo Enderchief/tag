@@ -22,10 +22,15 @@ export async function isAdmin(): Promise<boolean> {
 	return true;
 }
 
-export function formatTime(s: number) {
+export function formatTime(s: number, precision: number = 2) {
 	const minutes = Math.floor(s / 60);
 	const seconds = s - minutes * 60;
-	return `${minutes.toString().padStart(2, '0')}:${seconds
-		.toString()
-		.padStart(2, '0')}`;
+
+	const [sec, ms] = seconds.toPrecision(precision).split('.') as [
+		string,
+		string
+	];
+	return `${minutes.toString().padStart(2, '0')}:${sec.padStart(2, '0')}${
+		ms ? `.${ms}` : ''
+	}`;
 }

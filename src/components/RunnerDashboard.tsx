@@ -235,12 +235,13 @@ function CoinInfo({
 	function startCount() {
 		if (coins <= 0) return;
 		setStarted(true);
-		setStartTime(Date.now());
-		setSeconds(coins * 60);
+		const s = Date.now();
+		setStartTime(s);
+		setSeconds(0);
 		setId(
 			setInterval(() => {
-				setSeconds((curr) => curr - 1);
-			}, 1000) as unknown as number
+				setSeconds(() => (Date.now() - s) / 1000 / 60);
+			}, 5) as unknown as number
 		);
 	}
 
@@ -253,8 +254,11 @@ function CoinInfo({
 	function stopCount() {
 		clearTimeout(id);
 		setStarted(false);
-		const coinCount = coins! - (Date.now() - startTime) / 1000 / 60;
+		const t = Date.now() - startTime;
+		const sub = t / 1000 / 60;
+		const coinCount = coins! - sub;
 		const updated = Math.round(Math.floor(coinCount));
+		console.log({ t, sub, coinCount, updated });
 
 		setCoins(updated);
 
@@ -283,7 +287,8 @@ function CoinInfo({
 	return (
 		<div className='grid grid-cols-2 text-sm sm:text-base'>
 			<p className=''>
-				Coin count: {started ? formatTime(seconds) : coins} minutes
+				Coin count: {started ? formatTime((coins - seconds) * 60, 6) : coins}{' '}
+				minutes
 			</p>
 
 			<button

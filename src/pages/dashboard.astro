@@ -10,7 +10,7 @@ const accessToken = cookies.get('sb-access-token');
 const refreshToken = cookies.get('sb-refresh-token');
 
 if (!accessToken || !refreshToken) {
-	return redirect('/');
+	return redirect('/?reason=no_token');
 }
 
 const {
@@ -20,7 +20,9 @@ const {
 console.log(session, e);
 
 if (!session || e) {
-	return redirect('/api/auth/signout');
+	return redirect(
+		`/api/auth/signout?s=${!!session}&e=${encodeURIComponent(JSON.stringify(e))}`
+	);
 }
 
 const { data, error } = await supabase

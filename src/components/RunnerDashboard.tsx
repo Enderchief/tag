@@ -460,7 +460,7 @@ function ChallengeInfo({
 	if (hasChallenge && state.challenge)
 		return (
 			<div className='flex flex-col text-sm sm:text-base'>
-				<h3 className='text-base sm:text-lg'>{state.challenge.name}</h3>
+				<h3 className='text-base sm:text-lg'>{state.id} {state.challenge.name}</h3>
 				<p
 					className='text-sm max-w-[45ch] sm:max-w-96'
 					dangerouslySetInnerHTML={{

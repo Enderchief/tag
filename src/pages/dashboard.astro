@@ -17,7 +17,7 @@ const {
 	data: { session },
 	error: e,
 } = await supabase.auth.getSession();
-// console.log(!!session, e);
+console.log(session, e);
 
 if (!session || e) {
 	return redirect('/api/auth/signout');

@@ -1,4 +1,4 @@
-import { useEffect, useState, useReducer } from 'react';
+import { useEffect, useState, useReducer, useRef } from 'react';
 import type { Database } from '../types';
 import { supabase } from '$lib/db';
 import { formatTime } from '$lib/utils';
@@ -239,9 +239,12 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 							onPassChallenge={handlePassChallenge}
 						/>
 					</div>
-                    <div className='mt-10 text-xs md:text-sm'>
-                        <p>Completed: {team.challenges_completed.sort((a, b) => a - b).join(', ')}</p>
-                    </div>
+					<div className='mt-10 text-xs md:text-sm'>
+						<p>
+							Completed:{' '}
+							{team.challenges_completed.sort((a, b) => a - b).join(', ')}
+						</p>
+					</div>
 				</>
 			)}
 		</section>
@@ -262,6 +265,9 @@ function CoinInfo({
 	const [seconds, setSeconds] = useState(60);
 	const [startTime, setStartTime] = useState<number>(0);
 	const [id, setId] = useState<number>();
+	const [show, setShow] = useState(false);
+
+	const dialogRef = useRef<HTMLDialogElement>(null);
 
 	function startCount() {
 		if (coins <= 0) return;
@@ -310,7 +316,16 @@ function CoinInfo({
 
 	useEffect(() => {
 		onTransit(started);
+		if (started) {
+			setShow(true);
+		}
 	}, [started]);
+
+	useEffect(() => {
+		if (show) {
+			dialogRef.current?.showModal();
+		}
+	}, [show]);
 
 	if (state.veto) {
 		return (
@@ -340,6 +355,28 @@ function CoinInfo({
 			>
 				{started ? 'Stop' : 'Start'} Transit Count
 			</button>
+
+			{(
+				<dialog
+					ref={dialogRef}
+					className='max-w-80 p-3 rounded-md grid border border-solid border-gray-200 transition-all'
+                    style={{visibility: show ? 'visible' : 'hidden'}}
+				>
+					<button
+						onClick={() => {
+							setShow(false);
+							dialogRef.current?.close();
+						}}
+						className='bg-red-400 p-1 rounded-lg font-bold w-8 h-8 text-white'
+					>
+						x
+					</button>
+					<p className='mt-2'>
+						Don't forget to start GO on Transit, and to show the camera your GO
+						page before you get off and stop it!
+					</p>
+				</dialog>
+			)}
 		</div>
 	);
 }
@@ -421,7 +458,9 @@ function ChallengeInfo({
 					}}
 				></p>
 				{state.transit ? (
-					<p className='text-sm italic mt-4'>Wait until off transit to complete the challenge.</p>
+					<p className='text-sm italic mt-4'>
+						Wait until off transit to complete the challenge.
+					</p>
 				) : (
 					<div className='flex justify-center gap-5 mt-4 sm:gap-10 md:gap-20'>
 						<button

@@ -239,6 +239,9 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 							onPassChallenge={handlePassChallenge}
 						/>
 					</div>
+                    <div className='mt-10 text-xs md:text-sm'>
+                        <p>Completed: {team.challenges_completed.sort((a, b) => a - b).join(', ')}</p>
+                    </div>
 				</>
 			)}
 		</section>

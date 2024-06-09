@@ -25,6 +25,9 @@ if (!session || e) {
 	);
 }
 
+cookies.set('sb-access-token', session.access_token);
+cookies.set('sb-refresh-token', session.refresh_token);
+
 const { data, error } = await supabase
 	.from('user')
 	.select('id,name,team(*)')

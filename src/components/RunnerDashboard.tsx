@@ -22,12 +22,17 @@ type Action =
 	  }
 	| {
 			type: 'pass';
+	  }
+	| {
+			type: 'transit';
+			on_transit: boolean;
 	  };
 
 interface Model {
 	team: Team;
 	challenge?: Challenge | undefined;
 	veto?: Date | undefined;
+	transit: boolean;
 }
 
 function stateReducer(model: Model, action: Action): Model {
@@ -41,6 +46,7 @@ function stateReducer(model: Model, action: Action): Model {
 					...model.team,
 					coins: action.coins || 0,
 				},
+				transit: model.transit,
 			};
 		case 'new':
 			return {
@@ -49,6 +55,7 @@ function stateReducer(model: Model, action: Action): Model {
 				veto: model.team.veto_until
 					? new Date(model.team.veto_until)
 					: undefined,
+				transit: model.transit,
 			};
 		case 'veto':
 			if (action.until) {
@@ -59,11 +66,18 @@ function stateReducer(model: Model, action: Action): Model {
 			return {
 				team,
 				veto: action.until,
+				transit: model.transit,
 			};
 		case 'pass':
 			return {
 				team: { ...model.team, current_challenge: null, veto_until: null },
 				veto: undefined,
+				transit: model.transit,
+			};
+		case 'transit':
+			return {
+				...model,
+				transit: action.on_transit,
 			};
 		default:
 			return model;
@@ -71,7 +85,7 @@ function stateReducer(model: Model, action: Action): Model {
 }
 
 export default function RunnerDashboard({ team }: { team: Team }) {
-	const [state, dispatch] = useReducer(stateReducer, { team });
+	const [state, dispatch] = useReducer(stateReducer, { team, transit: false });
 
 	function handleDoneChallenge(winnable: number) {
 		console.log('handleDoneChallenge');
@@ -177,6 +191,10 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 		dispatch({ type: 'veto' });
 	}
 
+	function handleOnTransit(v: boolean) {
+		dispatch({ type: 'transit', on_transit: v });
+	}
+
 	useEffect(() => {
 		if (!state.veto || state.veto.valueOf() > Date.now()) return;
 		console.log('yes', state.veto);
@@ -207,7 +225,11 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 		<section className='max-w-[40rem] m-auto mt-16 flex flex-col'>
 			{team.role === 'runner' && (
 				<>
-					<CoinInfo state={state} onEndVeto={handleEndVeto} />
+					<CoinInfo
+						state={state}
+						onEndVeto={handleEndVeto}
+						onTransit={handleOnTransit}
+					/>
 					<div className='mt-10 flex justify-center'>
 						<ChallengeInfo
 							state={state}
@@ -226,12 +248,14 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 function CoinInfo({
 	state,
 	onEndVeto,
+	onTransit,
 }: {
 	state: Model;
 	onEndVeto: VoidFunction;
+	onTransit: (v: boolean) => void;
 }) {
 	const [coins, setCoins] = useState(state.team.coins!);
-	const [started, setStarted] = useState(false);
+	const [started, setStarted] = useState(state.transit);
 	const [seconds, setSeconds] = useState(60);
 	const [startTime, setStartTime] = useState<number>(0);
 	const [id, setId] = useState<number>();
@@ -280,6 +304,10 @@ function CoinInfo({
 	useEffect(() => {
 		setCoins(state.team.coins || 0);
 	}, [state]);
+
+	useEffect(() => {
+		onTransit(started);
+	}, [started]);
 
 	if (state.veto) {
 		return (
@@ -389,26 +417,30 @@ function ChallengeInfo({
 						),
 					}}
 				></p>
-				<div className='flex justify-center gap-5 mt-4 sm:gap-10 md:gap-20'>
-					<button
-						className='border border-transparent rounded-lg py-2 px-4 bg-green-100 hover:bg-green-200 active:bg-green-300'
-						onClick={doneChallenge}
-					>
-						Done
-					</button>
-					<button
-						className='border border-transparent rounded-lg py-2 px-4 bg-red-100 hover:bg-red-200 active:bg-red-300'
-						onClick={onVetoChallenge}
-					>
-						Veto
-					</button>
-					<button
-						className='border border-transparent rounded-lg py-2 px-4 bg-yellow-100 hover:bg-yellow-200 active:bg-yellow-300'
-						onClick={passChallenge}
-					>
-						Pass
-					</button>
-				</div>
+				{state.transit ? (
+					<p className='text-sm italic mt-4'>Wait until off transit to complete the challenge.</p>
+				) : (
+					<div className='flex justify-center gap-5 mt-4 sm:gap-10 md:gap-20'>
+						<button
+							className='border border-transparent rounded-lg py-2 px-4 bg-green-100 hover:bg-green-200 active:bg-green-300'
+							onClick={doneChallenge}
+						>
+							Done
+						</button>
+						<button
+							className='border border-transparent rounded-lg py-2 px-4 bg-red-100 hover:bg-red-200 active:bg-red-300'
+							onClick={onVetoChallenge}
+						>
+							Veto
+						</button>
+						<button
+							className='border border-transparent rounded-lg py-2 px-4 bg-yellow-100 hover:bg-yellow-200 active:bg-yellow-300'
+							onClick={passChallenge}
+						>
+							Pass
+						</button>
+					</div>
+				)}
 				<div className='inline-block mx-auto'>
 					<span className='inline-block mr-4'>Win </span>
 					<input

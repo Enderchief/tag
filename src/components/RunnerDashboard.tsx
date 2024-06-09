@@ -26,6 +26,10 @@ type Action =
 	| {
 			type: 'transit';
 			on_transit: boolean;
+	  }
+	| {
+			type: 'transit_end';
+			coins: number;
 	  };
 
 interface Model {
@@ -78,6 +82,12 @@ function stateReducer(model: Model, action: Action): Model {
 			return {
 				...model,
 				transit: action.on_transit,
+			};
+		case 'transit_end':
+			return {
+				...model,
+				team: { ...model.team, coins: action.coins },
+				transit: false,
 			};
 		default:
 			return model;
@@ -191,6 +201,10 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 		dispatch({ type: 'veto' });
 	}
 
+	function handleTransitEnd(coins: number) {
+		dispatch({ type: 'transit_end', coins: coins });
+	}
+
 	function handleOnTransit(v: boolean) {
 		dispatch({ type: 'transit', on_transit: v });
 	}
@@ -228,6 +242,7 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 					<CoinInfo
 						state={state}
 						onEndVeto={handleEndVeto}
+						onTransitEnd={handleTransitEnd}
 						onTransit={handleOnTransit}
 					/>
 					<div className='mt-10 flex justify-center'>
@@ -254,10 +269,12 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 function CoinInfo({
 	state,
 	onEndVeto,
+	onTransitEnd,
 	onTransit,
 }: {
 	state: Model;
 	onEndVeto: VoidFunction;
+	onTransitEnd: (v: number) => void;
 	onTransit: (v: boolean) => void;
 }) {
 	const [coins, setCoins] = useState(state.team.coins!);
@@ -302,6 +319,7 @@ function CoinInfo({
 		const formData = new FormData();
 		formData.append('id', state.team.id.toString());
 		formData.append('coins', updated.toString());
+		onTransitEnd(updated);
 		fetch('/api/team/update', { method: 'post', body: formData });
 	}
 
@@ -312,6 +330,7 @@ function CoinInfo({
 
 	useEffect(() => {
 		setCoins(state.team.coins || 0);
+		console.log('coinsup:', state.team);
 	}, [state]);
 
 	useEffect(() => {
@@ -356,11 +375,11 @@ function CoinInfo({
 				{started ? 'Stop' : 'Start'} Transit Count
 			</button>
 
-			{(
+			{
 				<dialog
 					ref={dialogRef}
 					className='max-w-80 p-3 rounded-md grid border border-solid border-gray-200 transition-all'
-                    style={{visibility: show ? 'visible' : 'hidden'}}
+					style={{ visibility: show ? 'visible' : 'hidden' }}
 				>
 					<button
 						onClick={() => {
@@ -376,7 +395,7 @@ function CoinInfo({
 						page before you get off and stop it!
 					</p>
 				</dialog>
-			)}
+			}
 		</div>
 	);
 }

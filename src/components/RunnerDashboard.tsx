@@ -37,7 +37,10 @@ function stateReducer(model: Model, action: Action): Model {
 	switch (action.type) {
 		case 'done':
 			return {
-				team: { ...model.team, coins: model.team.coins! + (action.coins || 0) },
+				team: {
+					...model.team,
+					coins: action.coins || 0,
+				},
 			};
 		case 'new':
 			return {
@@ -75,18 +78,19 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 
 		(async function () {
 			console.log('handleDoneChallenge inner');
+			const coins = (state.team.coins || 0) + winnable;
 
 			state.team.challenges_completed.push(state.challenge!.id);
 			const { error } = await supabase
 				.from('team')
 				.update({
-					coins: (state.team.coins || 0) + winnable,
+					coins: coins,
 					current_challenge: null,
 					challenges_completed: state.team.challenges_completed,
 				})
 				.eq('id', state.team.id);
 			console.log({ error, winnable });
-			dispatch({ type: 'done' });
+			dispatch({ type: 'done', coins: coins });
 		})();
 	}
 
@@ -226,7 +230,7 @@ function CoinInfo({
 	state: Model;
 	onEndVeto: VoidFunction;
 }) {
-	const [coins, setCoins] = useState(state.team.coins || 0);
+	const [coins, setCoins] = useState(state.team.coins!);
 	const [started, setStarted] = useState(false);
 	const [seconds, setSeconds] = useState(60);
 	const [startTime, setStartTime] = useState<number>(0);
@@ -272,6 +276,10 @@ function CoinInfo({
 		if (started) stopCount();
 		else startCount();
 	}
+
+	useEffect(() => {
+		setCoins(state.team.coins || 0);
+	}, [state]);
 
 	if (state.veto) {
 		return (

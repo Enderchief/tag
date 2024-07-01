@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Database } from '../types';
+import type { User, Team } from '@/lib/db';
 import AdminTeamInfo from './AdminTeamInfo';
 
 export default function AdminSection({
@@ -8,8 +8,8 @@ export default function AdminSection({
 	teamData,
 }: {
 	title: string;
-	userData: Array<Database['public']['Tables']['user']['Row']>;
-	teamData: Array<Database['public']['Tables']['team']['Row']>;
+	userData: Array<User>;
+	teamData: Array<Team>;
 }) {
 	const [isAddingTeam, setIsAddingTeam] = useState(false);
 

@@ -1,4 +1,4 @@
-import { formatTime } from '$lib/utils';
+import { formatTime } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
 export default function Timer({

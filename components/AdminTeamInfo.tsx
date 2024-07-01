@@ -1,11 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import type { Database } from '../types';
+import type { Team } from '@/lib/db';
 
-export default function AdminTeamInfo({
-	team,
-}: {
-	team: Database['public']['Tables']['team']['Row'];
-}) {
+export default function AdminTeamInfo({ team }: { team: Team }) {
 	const [name, setName] = useState(team.name!);
 	const [role, setRole] = useState(team.role || 'none');
 	const [coins, setCoins] = useState(team.coins! || 0);

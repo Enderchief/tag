@@ -1,4 +1,6 @@
+import { supabase } from '@/lib/db';
 import { useState } from 'react';
+import { TextInput, Text, Pressable, View, Alert } from 'react-native';
 
 export default function Name({
 	user,
@@ -14,7 +16,8 @@ export default function Name({
 		formData.append('id', user.id);
 		formData.append('name', name);
 
-		await fetch('/api/update', { method: 'post', body: formData });
+		await supabase.from('user').update({ name: name }).eq('id', user.id);
+
 		setTimeout(() => {
 			setCooldown(false);
 		}, 5000);
@@ -25,25 +28,33 @@ export default function Name({
 	const [editable, setEditable] = useState(false);
 
 	if (!editable) {
-		return <p onDoubleClick={() => setEditable(true)}>{name}</p>;
+		return (
+			<Text
+				className='w-fit text-base p-4'
+				onLongPress={() => {
+					Alert.alert('Long Press', 'You pressed');
+					setEditable(true);
+				}}
+			>
+				{name}
+			</Text>
+		);
 	} else {
 		return (
-			<>
-				<input
-					type='text'
-					name='name'
+			<View className='w-fit p-4'>
+				<TextInput
 					value={name}
-					onChange={(e) => setName(e.target.value)}
-					className='border text-sm max-w-[15ch] sm:text-base sm:max-w-fit'
-					title='Change your name'
+					onChangeText={(text) => setName(text)}
+					className='border p-1 text-base max-w-[15ch] sm:text-base sm:max-w-fit'
+					placeholder='Change your name'
 				/>
-				<button
-					className='border px-3 rounded-md bg-green-100 hover:bg-green-200'
-					onClick={submit}
+				<Pressable
+					className='border border-transparent px-3 py-2 rounded-md bg-green-100 hover:bg-green-200'
+					onPress={submit}
 				>
-					Done
-				</button>
-			</>
+					<Text>done</Text>
+				</Pressable>
+			</View>
 		);
 	}
 }

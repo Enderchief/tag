@@ -1,7 +1,8 @@
-import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/db.ts';
+import { supabase } from '@/lib/db';
+import { redirect } from '@/lib/utils';
 
-export const POST: APIRoute = async ({ redirect, url }) => {
+export const POST = async (request: Request): Promise<Response> => {
+	const url = new URL(request.url);
 	const redir = `${url.origin}/api/auth/callback`;
 
 	const { data, error } = await supabase.auth.signInWithOAuth({

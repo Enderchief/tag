@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import type { Database } from '../types';
+import type { Team, User } from '@/lib/db';
 
 export default function AdminUserInfo({
 	user,
 	teams,
 }: {
-	user: Database['public']['Tables']['user']['Row'];
-	teams: Array<Database['public']['Tables']['team']['Row']>;
+	user: User;
+	teams: Array<Team>;
 }) {
 	const [name, setName] = useState(user.name!);
 	const [team, setTeam] = useState(user.team);

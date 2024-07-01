@@ -1,8 +1,20 @@
-import { useEffect, useState, useReducer, useRef } from 'react';
-import type { Database } from '../types';
-import { supabase } from '$lib/db';
-import { formatTime } from '$lib/utils';
+import { useEffect, useState, useReducer } from 'react';
+import { Picker } from '@react-native-picker/picker';
+import type { Database } from '@/lib/types';
+import { supabase } from '@/lib/db';
+import { formatTime } from '@/lib/utils';
 import Timer from './Timer';
+import {
+	Alert,
+	Keyboard,
+	Modal,
+	Pressable,
+	Text,
+	TextInput,
+	TouchableWithoutFeedback,
+	View,
+} from 'react-native';
+import Button from './Button';
 
 type Team = Database['public']['Tables']['team']['Row'];
 type Challenge = Database['public']['Tables']['challenges']['Row'];
@@ -236,7 +248,7 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 	}, [state.veto]);
 
 	return (
-		<section className='max-w-[40rem] m-auto mt-16 flex flex-col'>
+		<View className='max-w-[40rem] m-auto mt-16 flex flex-col'>
 			{team.role === 'runner' && (
 				<>
 					<CoinInfo
@@ -245,7 +257,7 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 						onTransitEnd={handleTransitEnd}
 						onTransit={handleOnTransit}
 					/>
-					<div className='mt-10 flex justify-center'>
+					<View className='mt-10 flex flex-row justify-center'>
 						<ChallengeInfo
 							state={state}
 							onNewChallenge={handleNewChallenge}
@@ -253,16 +265,16 @@ export default function RunnerDashboard({ team }: { team: Team }) {
 							onVetoChallenge={handleVetoChallenge}
 							onPassChallenge={handlePassChallenge}
 						/>
-					</div>
-					<div className='mt-10 text-xs md:text-sm'>
-						<p>
+					</View>
+					<View className='mt-10'>
+						<Text className='text-xs md:text-sm'>
 							Completed:{' '}
 							{team.challenges_completed.sort((a, b) => a - b).join(', ')}
-						</p>
-					</div>
+						</Text>
+					</View>
 				</>
 			)}
-		</section>
+		</View>
 	);
 }
 
@@ -282,13 +294,22 @@ function CoinInfo({
 	const [seconds, setSeconds] = useState(60);
 	const [startTime, setStartTime] = useState<number>(0);
 	const [id, setId] = useState<number>();
-	const [show, setShow] = useState(false);
-
-	const dialogRef = useRef<HTMLDialogElement>(null);
 
 	function startCount() {
 		if (coins <= 0) return;
 		setStarted(true);
+		Alert.alert(
+			'Start GO!',
+			"Don't forget to start GO on Transit, and to show the camera your GO page before you get off and stop it!",
+			[
+				{
+					text: 'Ok',
+					onPress: () => {
+						console.log('GO ACK');
+					},
+				},
+			]
+		);
 		const s = Date.now();
 		setStartTime(s);
 		setSeconds(0);
@@ -316,11 +337,13 @@ function CoinInfo({
 
 		setCoins(updated);
 
-		const formData = new FormData();
-		formData.append('id', state.team.id.toString());
-		formData.append('coins', updated.toString());
 		onTransitEnd(updated);
-		fetch('/api/team/update', { method: 'post', body: formData });
+
+		supabase
+			.from('team')
+			.update({ coins: updated })
+			.eq('id', state.team.id)
+			.then(() => {});
 	}
 
 	function click() {
@@ -335,68 +358,36 @@ function CoinInfo({
 
 	useEffect(() => {
 		onTransit(started);
-		if (started) {
-			setShow(true);
-		}
 	}, [started]);
-
-	useEffect(() => {
-		if (show) {
-			dialogRef.current?.showModal();
-		}
-	}, [show]);
 
 	if (state.veto) {
 		return (
-			<div>
-				<p>Veto'd, no transit until {state.veto.toLocaleTimeString()}</p>
-				<p>
+			<View>
+				<Text>Veto'd, no transit until {state.veto.toLocaleTimeString()}</Text>
+				<Text>
 					<Timer time={state.veto} then={onEndVeto} /> remain
-				</p>
-			</div>
+				</Text>
+			</View>
 		);
 	}
 
 	return (
-		<div className='grid grid-cols-2 text-sm sm:text-base'>
-			<p className=''>
+		<View className='grid grid-cols-2 text-sm sm:text-base'>
+			<Text className='text-sm sm:text-base'>
 				Coin count: {started ? formatTime((coins - seconds) * 60, 6) : coins}{' '}
 				minutes
-			</p>
+			</Text>
 
-			<button
-				onClick={click}
-				className={`max-w-fit mx-auto border border-transparent p-2 rounded-lg ${
+			<Button
+				onPress={click}
+				className={`max-w-fit mx-auto border border-transparent p-2 rounded-lg text-base ${
 					started
 						? 'bg-red-100 hover:bg-red-200 active:bg-red-100'
 						: 'bg-green-100 hover:bg-green-200 active:bg-green-100'
 				} transition-all p-2`}
-			>
-				{started ? 'Stop' : 'Start'} Transit Count
-			</button>
-
-			{
-				<dialog
-					ref={dialogRef}
-					className='max-w-80 p-3 rounded-md grid border border-solid border-gray-200 transition-all'
-					style={{ visibility: show ? 'visible' : 'hidden' }}
-				>
-					<button
-						onClick={() => {
-							setShow(false);
-							dialogRef.current?.close();
-						}}
-						className='bg-red-400 p-1 rounded-lg font-bold w-8 h-8 text-white'
-					>
-						x
-					</button>
-					<p className='mt-2'>
-						Don't forget to start GO on Transit, and to show the camera your GO
-						page before you get off and stop it!
-					</p>
-				</dialog>
-			}
-		</div>
+				title={`${started ? 'Stop' : 'Start'} Transit Count`}
+			/>
+		</View>
 	);
 }
 
@@ -416,6 +407,23 @@ function ChallengeInfo({
 	const [hasChallenge, setHasChallenge] = useState(false);
 
 	const [winnable, setWinnable] = useState<number>(0);
+	const [options, setOptions] = useState<number[]>([]);
+	const [modalIsVisible, setModalVisibility] = useState(false);
+
+	useEffect(() => {
+		console.log('Challenges: ', state.challenge);
+
+		if (!state.challenge) return;
+		let o = [];
+		for (
+			let i = state.challenge.min_coins;
+			i <= state.challenge.max_coins;
+			i++
+		) {
+			o.push(i);
+		}
+		setOptions(o);
+	}, [state.challenge]);
 
 	useEffect(() => {
 		setWinnable(state.challenge?.min_coins || 0);
@@ -454,90 +462,122 @@ function ChallengeInfo({
 	}, [state.veto]);
 
 	if (state.veto) {
-		return <p>No Challenges yet...</p>;
+		return <Text>No Challenges yet...</Text>;
 	}
 
 	if (hasChallenge && state.challenge)
 		return (
-			<div className='flex flex-col text-sm sm:text-base'>
-				<h3 className='text-base sm:text-lg'>{state.id} {state.challenge.name}</h3>
-				<p
+			<View className='flex flex-col text-sm sm:text-base'>
+				<Text className='text-base sm:text-lg'>
+					#{state.challenge.id} {state.challenge.name}
+				</Text>
+				<Text
 					className='text-sm max-w-[45ch] sm:max-w-96'
-					dangerouslySetInnerHTML={{
-						__html: state.challenge.description.replaceAll(
-							/\[(.*)\]\((.*)\)/g,
-							(_, ...args) => {
-								// console.log({ substring, args });
-								return `
-                                    <a class="text-blue-600 underline hover:text-blue-500"
-                                    target="_blank"
-                                    href=${args[1]}>${args[0]}</a>`;
-							}
-						),
-					}}
-				></p>
+					// dangerouslySetInnerHTML={{
+					// 	__html: state.challenge.description.replaceAll(
+					// 		/\[(.*)\]\((.*)\)/g,
+					// 		(_, ...args) => {
+					// 			// console.log({ substring, args });
+					// 			return `
+					//                 <a class="text-blue-600 underline hover:text-blue-500"
+					//                 target="_blank"
+					//                 href=${args[1]}>${args[0]}</a>`;
+					// 		}
+					// 	),
+					// }}
+				>
+					{state.challenge.description}
+				</Text>
 				{state.transit ? (
-					<p className='text-sm italic mt-4'>
+					<Text className='text-sm italic mt-4'>
 						Wait until off transit to complete the challenge.
-					</p>
+					</Text>
 				) : (
-					<div className='flex justify-center gap-5 mt-4 sm:gap-10 md:gap-20'>
-						<button
+					<View className='flex flex-row justify-between mt-4 px-4'>
+						<Button
 							className='border border-transparent rounded-lg py-2 px-4 bg-green-100 hover:bg-green-200 active:bg-green-300'
-							onClick={doneChallenge}
-						>
-							Done
-						</button>
-						<button
+							onPress={doneChallenge}
+							title='Done'
+						/>
+
+						<Button
 							className='border border-transparent rounded-lg py-2 px-4 bg-red-100 hover:bg-red-200 active:bg-red-300'
-							onClick={onVetoChallenge}
-						>
-							Veto
-						</button>
-						<button
+							onPress={onVetoChallenge}
+							title='Veto'
+						/>
+
+						<Button
 							className='border border-transparent rounded-lg py-2 px-4 bg-yellow-100 hover:bg-yellow-200 active:bg-yellow-300'
-							onClick={passChallenge}
-						>
-							Pass
-						</button>
-					</div>
+							onPress={passChallenge}
+							title='Pass'
+						/>
+					</View>
 				)}
-				<div className='inline-block mx-auto'>
-					<span className='inline-block mr-4'>Win </span>
-					<input
-						type='number'
-						min={state.challenge.min_coins}
-						max={state.challenge.max_coins}
-						defaultValue={state.challenge.min_coins}
-						disabled={state.challenge.min_coins === state.challenge.max_coins}
-						onChange={(e) => {
-							const num = e.target.valueAsNumber;
-							console.log('change', num);
-							if (num > state.challenge!.max_coins) {
-								e.target.value = `${state.challenge!.max_coins}`;
-							} else if (
-								num < state.challenge!.min_coins ||
-								Number.isNaN(num)
-							) {
-								e.target.value = `${state.challenge!.min_coins}`;
-								return;
-							}
-							setWinnable(e.target.valueAsNumber);
+
+				<View className='flex flex-row align-middle mx-auto my-6'>
+					<Text className='mr-4'>Win </Text>
+					{!modalIsVisible && (
+						<Pressable onPress={() => setModalVisibility(true)}>
+							<Text>{winnable}</Text>
+						</Pressable>
+					)}
+					<WinnableSelector
+						isVisible={modalIsVisible}
+						options={options}
+						onClose={(coin) => {
+							setWinnable(coin);
+							setModalVisibility(false);
 						}}
-						className='border mt-10'
-						placeholder='Coin Count'
 					/>
-					<span className='ml-2'>{''} Coins</span>
-				</div>
-			</div>
+					<Text className='ml-2'>{''} Coins</Text>
+				</View>
+			</View>
 		);
 
 	return (
-		<button
-			className='p-2 border border-transparent rounded-lg bg-blue-200 self-center'
-			onClick={onNewChallenge}
-		>
-			New Challenge
-		</button>
+		<Button
+			className='p-1 border border-transparent rounded-lg bg-blue-200 self-center'
+			onPress={onNewChallenge}
+			title='New Challenge'
+		/>
+	);
+}
+
+function WinnableSelector({
+	isVisible,
+	onClose,
+	options,
+}: {
+	isVisible: boolean;
+	onClose: (v: number) => void;
+	options: number[];
+}) {
+	const [winnable, setWinnable] = useState(Math.min(...options) || 0);
+
+	return (
+		<Modal visible={isVisible} animationType='fade'>
+			<View className='absolute bottom-0 h-2/3 w-full lg:w-full lg:items-center gap-8'>
+				<Text className='text-center text-xl'>
+					Select the amount of coins you have won.
+				</Text>
+				<View className='min-w-10'>
+					<Picker
+						selectedValue={winnable}
+						onValueChange={(value) => setWinnable(value)}
+						className='font-sm'
+					>
+						{options.map((coin) => (
+							<Picker.Item key={coin} label={coin.toString()} value={coin} />
+						))}
+					</Picker>
+				</View>
+				<Button
+					onPress={() => onClose(winnable)}
+					className='text-lg border p-2 border-transparent bg-green-100 rounded-md'
+				>
+					Done
+				</Button>
+			</View>
+		</Modal>
 	);
 }

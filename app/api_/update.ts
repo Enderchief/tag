@@ -1,8 +1,7 @@
-import type { APIRoute } from 'astro';
-import { supabase } from '../../lib/db';
-import { isAdmin } from '../../lib/utils';
+import { supabase } from '@/lib/db';
+import { isAdmin, redirect } from '@/lib/utils';
 
-export const POST: APIRoute = async ({ redirect, request }) => {
+export const POST = async (request: Request): Promise<Response> => {
 	const formData = await request.formData();
 	const id = formData.get('id');
 	const name = formData.get('name');

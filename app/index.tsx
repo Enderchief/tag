@@ -87,7 +87,6 @@ function Login() {
       <Text className="text-3xl">Welcome to Tag</Text>
       <Pressable className="rounded-md p-2 bg-[#5865F2] h-fit" onPress={signUp}>
         <Text className="text-lg text-white font-semibold">
-          {Linking.useURL()}
           Sign Up with Discord
         </Text>
       </Pressable>

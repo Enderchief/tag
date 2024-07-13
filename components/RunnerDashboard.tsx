@@ -6,12 +6,9 @@ import { formatTime } from '@/lib/utils';
 import Timer from './Timer';
 import {
 	Alert,
-	Keyboard,
 	Modal,
 	Pressable,
 	Text,
-	TextInput,
-	TouchableWithoutFeedback,
 	View,
 } from 'react-native';
 import Button from './Button';

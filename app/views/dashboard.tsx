@@ -1,9 +1,9 @@
-import { View, Text, Pressable, Alert } from "react-native";
-import { Team, User, supabase } from "@/lib/db";
 import Name from "@/components/Name";
 import RunnerDashboard from "@/components/RunnerDashboard";
-import { useEffect, useState } from "react";
+import { Team, User, supabase } from "@/lib/db";
 import { Session } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, Text, View } from "react-native";
 
 interface PartialUser extends Pick<User, "id" | "name"> {
   team: Team | null;
@@ -12,6 +12,20 @@ interface PartialUser extends Pick<User, "id" | "name"> {
 export default function Dashboard({ session }: { session: Session }) {
   const [team, setTeam] = useState<Team | null>();
   const [partialUser, setPartialUser] = useState<PartialUser>();
+  const [time, setTime] = useState(new Date().toLocaleTimeString());
+
+  const [id, setId] = useState<number>();
+
+  useEffect(() => {
+    if (id) return;
+  	setId(setInterval(() => {
+   	  setTime(new Date().toLocaleTimeString())
+   	}, 500) as unknown as number)
+
+   	return () => {
+   	  clearInterval(id)
+    }
+  }, [id])
 
   useEffect(() => {
     if (session) load();
@@ -58,6 +72,7 @@ export default function Dashboard({ session }: { session: Session }) {
             )}
             )
           </Text>
+          <Text className="text-center text-sm">{time}</Text>
           <View className="m-4">
             <RunnerDashboard team={team} />
           </View>

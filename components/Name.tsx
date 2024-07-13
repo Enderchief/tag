@@ -32,7 +32,6 @@ export default function Name({
 			<Text
 				className='w-fit text-base p-4'
 				onLongPress={() => {
-					Alert.alert('Long Press', 'You pressed');
 					setEditable(true);
 				}}
 			>

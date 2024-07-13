@@ -13,17 +13,31 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.endercheif.tag"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.endercheif.tag"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "88c9573c-7d0f-4a5d-9fd0-1eb3958547db"
+      }
+    },
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/88c9573c-7d0f-4a5d-9fd0-1eb3958547db"
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
